@@ -202,12 +202,24 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Main title
+# Main title and subtitle
 st.markdown("<h1 class='title'>SPP Ingredients Management App</h1>", unsafe_allow_html=True)
+st.markdown("""
+    <p class='subtitle'>
+        Efficiently allocate ingredients based on historical usage. 
+        Use the buttons below to:
+        <ul>
+            <li><strong>Allocate Ingredients</strong>: Calculate allocations for specific items.</li>
+            <li><strong>View Data Overview</strong>: Explore filtered data and usage statistics.</li>
+            <li><strong>Analyze Historical Usage</strong>: Visualize trends and identify most used items.</li>
+            <li><strong>Issue Ingredients</strong>: Record new ingredient issuances with suggestions from historical data.</li>
+        </ul>
+    </p>
+""", unsafe_allow_html=True)
 
 # Sidebar
 with st.sidebar:
-    st.markdown("<h2 class='title'>Navigation</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 class='title'>Quick Actions & Stats</h2>", unsafe_allow_html=True)
     
     # Refresh data button
     if st.button("Refresh Data"):
@@ -245,12 +257,27 @@ unique_departments = sorted(data["DEPARTMENT"].unique().tolist())
 unique_item_categories = sorted(data["ITEM_CATEGORY"].unique().tolist())
 unique_department_cats = sorted(data["DEPARTMENT_CAT"].unique().tolist())
 
-# Tabs for main page
-tabs = ["Allocation Calculator", "Data Overview", "Historical Usage", "Ingredient Issuance"]
-selected_tab = st.radio("Select Page", tabs, horizontal=True)
+# Buttons for main page
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    if st.button("Allocate Ingredients"):
+        st.session_state.selected_tab = "Allocation Calculator"
+with col2:
+    if st.button("View Data Overview"):
+        st.session_state.selected_tab = "Data Overview"
+with col3:
+    if st.button("Analyze Historical Usage"):
+        st.session_state.selected_tab = "Historical Usage"
+with col4:
+    if st.button("Issue Ingredients"):
+        st.session_state.selected_tab = "Ingredient Issuance"
+
+# Default to Allocation Calculator if no tab is selected
+if "selected_tab" not in st.session_state:
+    st.session_state.selected_tab = "Allocation Calculator"
 
 # Allocation Calculator
-if selected_tab == "Allocation Calculator":
+if st.session_state.selected_tab == "Allocation Calculator":
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("### Allocation Calculator")
     
@@ -308,7 +335,7 @@ if selected_tab == "Allocation Calculator":
                     st.error(f"Item {identifier} not found in historical data or has no usage data for the selected department!")
 
 # Data Overview
-elif selected_tab == "Data Overview":
+elif st.session_state.selected_tab == "Data Overview":
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("### Data Overview")
     
@@ -378,7 +405,7 @@ elif selected_tab == "Data Overview":
     st.markdown("</div>", unsafe_allow_html=True)
 
 # Historical Usage
-elif selected_tab == "Historical Usage":
+elif st.session_state.selected_tab == "Historical Usage":
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("### Historical Usage Trends")
     
@@ -414,7 +441,7 @@ elif selected_tab == "Historical Usage":
     st.markdown("</div>", unsafe_allow_html=True)
 
 # Ingredient Issuance
-elif selected_tab == "Ingredient Issuance":
+elif st.session_state.selected_tab == "Ingredient Issuance":
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("### Ingredient Issuance Console")
     

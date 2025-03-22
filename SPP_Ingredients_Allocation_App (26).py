@@ -199,6 +199,12 @@ st.markdown("""
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         margin-bottom: 20px;
     }
+    .stDataFrame {
+        background-color: #f0f0f0;
+    }
+    .stDataFrame:active {
+        background-color: #2E86C1;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -256,6 +262,7 @@ unique_item_serials = sorted(data["ITEM_SERIAL"].unique().tolist())
 unique_departments = sorted(data["DEPARTMENT"].unique().tolist())
 unique_item_categories = sorted(data["ITEM_CATEGORY"].unique().tolist())
 unique_department_cats = sorted(data["DEPARTMENT_CAT"].unique().tolist())
+unique_stores = sorted(data["STORE"].unique().tolist())
 
 # Buttons for main page
 col1, col2, col3, col4 = st.columns(4)
@@ -280,6 +287,12 @@ if "selected_tab" not in st.session_state:
 if st.session_state.selected_tab == "Allocation Calculator":
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("### Allocation Calculator")
+    st.markdown("""
+        <p>
+            Use this tool to calculate ingredient allocations based on historical usage data.
+            Enter the items and quantities, and the app will allocate them proportionally across departments.
+        </p>
+    """, unsafe_allow_html=True)
     
     with st.form("allocation_form"):
         num_items = st.number_input("Number of items to allocate", min_value=1, max_value=10, step=1, value=1)
@@ -338,6 +351,11 @@ if st.session_state.selected_tab == "Allocation Calculator":
 elif st.session_state.selected_tab == "Data Overview":
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("### Data Overview")
+    st.markdown("""
+        <p>
+            Explore filtered data and usage statistics. Use the filters to narrow down the data and visualize usage trends.
+        </p>
+    """, unsafe_allow_html=True)
     
     with st.expander("🔍 Advanced Filters", expanded=True):
         col1, col2 = st.columns(2)
@@ -408,6 +426,11 @@ elif st.session_state.selected_tab == "Data Overview":
 elif st.session_state.selected_tab == "Historical Usage":
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("### Historical Usage Trends")
+    st.markdown("""
+        <p>
+            Visualize historical usage trends and identify most used items. Analyze monthly usage patterns by department.
+        </p>
+    """, unsafe_allow_html=True)
     
     # Overall statistics
     st.markdown("#### Overall Statistics")
@@ -444,6 +467,11 @@ elif st.session_state.selected_tab == "Historical Usage":
 elif st.session_state.selected_tab == "Ingredient Issuance":
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("### Ingredient Issuance Console")
+    st.markdown("""
+        <p>
+            Record new ingredient issuances with suggestions from historical data. Enter the details and submit the form.
+        </p>
+    """, unsafe_allow_html=True)
     
     with st.form("issuance_form"):
         st.markdown("#### Enter Issuance Details")
@@ -470,7 +498,7 @@ elif st.session_state.selected_tab == "Ingredient Issuance":
         reference = st.text_input("Reference", value=item_data["REFERENCE"])
         department_cat = st.selectbox("Department Category", unique_department_cats, index=unique_department_cats.index(item_data["DEPARTMENT_CAT"]))
         batch_no = st.text_input("Batch No.", value=item_data["BATCH NO."])
-        store = st.text_input("Store", value=item_data["STORE"])
+        store = st.selectbox("Store", unique_stores, index=unique_stores.index(item_data["STORE"]))
         received_by = st.text_input("Received By", value=item_data["RECEIVED BY"])
         
         submitted = st.form_submit_button("Submit Issuance")

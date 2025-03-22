@@ -183,15 +183,20 @@ st.markdown("""
         margin-top: 30px;
     }
     .stButton button {
-        background-color: #2E86C1;
-        color: white;
+        background-color: #f0f0f0;
+        color: #2E86C1;
         font-weight: bold;
         border-radius: 5px;
         padding: 10px 20px;
         transition: background-color 0.3s ease;
     }
     .stButton button:hover {
-        background-color: #1C6EA4;
+        background-color: #2E86C1;
+        color: white;
+    }
+    .stButton button:active {
+        background-color: #2E86C1;
+        color: white;
     }
     .card {
         background-color: #ffffff;
@@ -251,6 +256,11 @@ with st.sidebar:
         unique_departments = sorted(st.session_state.data["DEPARTMENT"].unique().tolist())
         st.metric("Total Items", f"{len(unique_item_names)}")
         st.metric("Total Departments", f"{len(unique_departments)}")
+        
+        # Display date period
+        min_date = st.session_state.data["DATE"].min().date()
+        max_date = st.session_state.data["DATE"].max().date()
+        st.markdown(f"**Date Period:** {min_date} to {max_date}")
     else:
         st.warning("No data loaded yet.")
 
@@ -266,7 +276,7 @@ if data is None:
 # Extract unique values for filters
 unique_item_names = sorted(data["ITEM NAME"].unique().tolist())
 unique_item_serials = sorted(data["ITEM_SERIAL"].unique().tolist())
-unique_departments = sorted(data["DEPARTMENT"].unique().tolist())
+unique_departments = sorted(["All Departments"] + data["DEPARTMENT"].unique().tolist())
 unique_item_categories = sorted(data["ITEM_CATEGORY"].unique().tolist())
 unique_department_cats = sorted(data["DEPARTMENT_CAT"].unique().tolist())
 unique_stores = sorted(data["STORE"].unique().tolist())
@@ -274,16 +284,16 @@ unique_stores = sorted(data["STORE"].unique().tolist())
 # Buttons for main page
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    if st.button("📊 Allocate Ingredients"):
+    if st.button("📊 Allocate Ingredients", key="allocate_button"):
         st.session_state.selected_tab = "Allocation Calculator"
 with col2:
-    if st.button("📈 View Data Overview"):
+    if st.button("📈 View Data Overview", key="data_overview_button"):
         st.session_state.selected_tab = "Data Overview"
 with col3:
-    if st.button("📅 Analyze Historical Usage"):
+    if st.button("📅 Analyze Historical Usage", key="historical_usage_button"):
         st.session_state.selected_tab = "Historical Usage"
 with col4:
-    if st.button("📝 Issue Ingredients"):
+    if st.button("📝 Issue Ingredients", key="issue_ingredients_button"):
         st.session_state.selected_tab = "Ingredient Issuance"
 
 # Default to Allocation Calculator if no tab is selected
@@ -439,41 +449,47 @@ elif st.session_state.selected_tab == "Historical Usage":
         </p>
     """, unsafe_allow_html=True)
     
-    # Overall statistics
-    st.markdown("#### Overall Statistics")
-    total_usage = data["QUANTITY"].sum()
-    most_used_item = data.groupby("ITEM NAME")["QUANTITY"].sum().idxmax()
-    most_used_department = data.groupby("DEPARTMENT")["QUANTITY"].sum().idxmax()
-    
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Total Quantity Used", f"{total_usage:,.2f}")
-    with col2:
-        st.metric("Most Used Item", most_used_item)
-    with col3:
-        st.metric("Most Used Department", most_used_department)
-    
-    # Monthly usage per department
-    st.markdown("#### Monthly Usage per Department")
-    monthly_usage = data.groupby([pd.Grouper(key="DATE", freq="M"), "DEPARTMENT"])["QUANTITY"].sum().reset_index()
-    
-    fig = px.line(
-        monthly_usage,
-        x="DATE",
-        y="QUANTITY",
-        color="DEPARTMENT",
-        title="Monthly Usage by Department",
-        labels={"DATE": "Date", "QUANTITY": "Quantity"},
-        markers=True
-    )
-    st.plotly_chart(fig, use_container_width=True)
-    
-    # Top 10 most used items by department
-    st.markdown("#### Top 10 Most Used Items by Department")
+    # Department selection for overall statistics
     selected_department = st.selectbox("Select Department", unique_departments)
     
     if selected_department:
-        top_items = data[data["DEPARTMENT"] == selected_department].groupby("ITEM NAME")["QUANTITY"].sum().nlargest(10).reset_index()
+        if selected_department == "All Departments":
+            filtered_data = data
+        else:
+            filtered_data = data[data["DEPARTMENT"] == selected_department]
+        
+        # Overall statistics
+        st.markdown("#### Overall Statistics")
+        total_usage = filtered_data["QUANTITY"].sum()
+        most_used_item = filtered_data.groupby("ITEM NAME")["QUANTITY"].sum().idxmax()
+        most_used_department = filtered_data.groupby("DEPARTMENT")["QUANTITY"].sum().idxmax()
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Quantity Used", f"{total_usage:,.2f}")
+        with col2:
+            st.metric("Most Used Item", most_used_item)
+        with col3:
+            st.metric("Most Used Department", most_used_department)
+        
+        # Monthly usage per department
+        st.markdown("#### Monthly Usage per Department")
+        monthly_usage = filtered_data.groupby([pd.Grouper(key="DATE", freq="M"), "DEPARTMENT"])["QUANTITY"].sum().reset_index()
+        
+        fig = px.line(
+            monthly_usage,
+            x="DATE",
+            y="QUANTITY",
+            color="DEPARTMENT",
+            title="Monthly Usage by Department",
+            labels={"DATE": "Date", "QUANTITY": "Quantity"},
+            markers=True
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Top 10 most used items by department
+        st.markdown("#### Top 10 Most Used Items by Department")
+        top_items = filtered_data.groupby("ITEM NAME")["QUANTITY"].sum().nlargest(10).reset_index()
         
         fig = px.bar(
             top_items,

@@ -139,6 +139,9 @@ def generate_historical_usage_chart(df, item_name):
     if filtered_df.empty:
         return None
     
+    # Resample data to reduce noise (e.g., weekly or monthly)
+    filtered_df = filtered_df.set_index("DATE").resample("W").sum().reset_index()
+    
     fig = px.line(
         filtered_df,
         x="DATE",
@@ -205,12 +208,36 @@ st.markdown("<h1 class='title'>SPP Ingredients Management App</h1>", unsafe_allo
 # Sidebar
 with st.sidebar:
     st.markdown("<h2 class='title'>Navigation</h2>", unsafe_allow_html=True)
-    page = st.radio("Select Page", [
-        "Allocation Calculator",
-        "Data Overview",
-        "Historical Usage",
-        "Ingredient Issuance"
-    ])
+    
+    # Refresh data button
+    if st.button("Refresh Data"):
+        st.session_state.data = load_data_from_google_sheet()
+        st.success("Data refreshed successfully!")
+    
+    # Clear cache button
+    if st.button("Clear Cache"):
+        st.cache_data.clear()
+        st.success("Cache cleared successfully!")
+    
+    # Download CSV button
+    if st.button("Download CSV"):
+        csv = st.session_state.data.to_csv(index=False)
+        st.download_button(
+            label="Download Data as CSV",
+            data=csv,
+            file_name="ingredients_data.csv",
+            mime="text/csv",
+        )
+    
+    # Summary statistics
+    st.markdown("### Quick Stats")
+    if "data" in st.session_state:
+        unique_item_names = sorted(st.session_state.data["ITEM NAME"].unique().tolist())
+        unique_departments = sorted(st.session_state.data["DEPARTMENT"].unique().tolist())
+        st.metric("Total Items", f"{len(unique_item_names)}")
+        st.metric("Total Departments", f"{len(unique_departments)}")
+    else:
+        st.warning("No data loaded yet.")
 
 # Load data
 if "data" not in st.session_state:
@@ -223,10 +250,15 @@ if data is None:
 
 # Extract unique values for filters
 unique_item_names = sorted(data["ITEM NAME"].unique().tolist())
+unique_item_serials = sorted(data["ITEM_SERIAL"].unique().tolist())
 unique_departments = sorted(["All Departments"] + data["DEPARTMENT"].unique().tolist())
 
+# Tabs for main page
+tabs = ["Allocation Calculator", "Data Overview", "Historical Usage", "Ingredient Issuance"]
+selected_tab = st.radio("Select Page", tabs, horizontal=True)
+
 # Allocation Calculator
-if page == "Allocation Calculator":
+if selected_tab == "Allocation Calculator":
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("### Allocation Calculator")
     
@@ -275,7 +307,7 @@ if page == "Allocation Calculator":
                     st.error(f"Item {identifier} not found in historical data or has no usage data for the selected department!")
 
 # Data Overview
-elif page == "Data Overview":
+elif selected_tab == "Data Overview":
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("### Data Overview")
     
@@ -336,7 +368,7 @@ elif page == "Data Overview":
     st.markdown("</div>", unsafe_allow_html=True)
 
 # Historical Usage
-elif page == "Historical Usage":
+elif selected_tab == "Historical Usage":
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("### Historical Usage Trends")
     
@@ -350,7 +382,7 @@ elif page == "Historical Usage":
     st.markdown("</div>", unsafe_allow_html=True)
 
 # Ingredient Issuance
-elif page == "Ingredient Issuance":
+elif selected_tab == "Ingredient Issuance":
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("### Ingredient Issuance Console")
     
@@ -361,7 +393,11 @@ elif page == "Ingredient Issuance":
         issuance_date = st.date_input("Date", value=datetime.now())
         
         # Item selection
-        selected_item = st.selectbox("Item Name", unique_item_names)
+        col1, col2 = st.columns(2)
+        with col1:
+            selected_item = st.selectbox("Item Name", unique_item_names)
+        with col2:
+            selected_item_serial = st.selectbox("Item Serial", unique_item_serials)
         
         # Quantity input
         quantity = st.number_input("Quantity", min_value=0.1, step=0.1)

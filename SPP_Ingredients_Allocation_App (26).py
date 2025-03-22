@@ -139,8 +139,8 @@ def generate_historical_usage_chart(df, item_name):
     if filtered_df.empty:
         return None
     
-    # Resample data to reduce noise (e.g., weekly or monthly)
-    filtered_df = filtered_df.set_index("DATE").resample("W").sum().reset_index()
+    # Resample data to reduce noise (e.g., monthly)
+    filtered_df = filtered_df.set_index("DATE").resample("M").sum().reset_index()
     
     fig = px.line(
         filtered_df,
@@ -219,16 +219,6 @@ with st.sidebar:
         st.cache_data.clear()
         st.success("Cache cleared successfully!")
     
-    # Download CSV button
-    if st.button("Download CSV"):
-        csv = st.session_state.data.to_csv(index=False)
-        st.download_button(
-            label="Download Data as CSV",
-            data=csv,
-            file_name="ingredients_data.csv",
-            mime="text/csv",
-        )
-    
     # Summary statistics
     st.markdown("### Quick Stats")
     if "data" in st.session_state:
@@ -251,7 +241,9 @@ if data is None:
 # Extract unique values for filters
 unique_item_names = sorted(data["ITEM NAME"].unique().tolist())
 unique_item_serials = sorted(data["ITEM_SERIAL"].unique().tolist())
-unique_departments = sorted(["All Departments"] + data["DEPARTMENT"].unique().tolist())
+unique_departments = sorted(data["DEPARTMENT"].unique().tolist())
+unique_item_categories = sorted(data["ITEM_CATEGORY"].unique().tolist())
+unique_department_cats = sorted(data["DEPARTMENT_CAT"].unique().tolist())
 
 # Tabs for main page
 tabs = ["Allocation Calculator", "Data Overview", "Historical Usage", "Ingredient Issuance"]
@@ -302,6 +294,15 @@ if selected_tab == "Allocation Calculator":
                     
                     st.dataframe(formatted_result, use_container_width=True)
                     
+                    # Download CSV for allocation results
+                    csv = formatted_result.to_csv(index=False)
+                    st.download_button(
+                        label="Download Allocation as CSV",
+                        data=csv,
+                        file_name=f"{identifier}_allocation.csv",
+                        mime="text/csv",
+                    )
+                    
                     st.markdown("</div>", unsafe_allow_html=True)
                 else:
                     st.error(f"Item {identifier} not found in historical data or has no usage data for the selected department!")
@@ -318,13 +319,13 @@ elif selected_tab == "Data Overview":
             max_date = data["DATE"].max().date()
             date_range = st.date_input("Select Date Range", [min_date, max_date])
         with col2:
-            selected_categories = st.multiselect("Filter by Item Categories", data["ITEM_CATEGORY"].unique().tolist(), default=[])
+            selected_categories = st.multiselect("Filter by Item Categories", unique_item_categories, default=[])
         
         col3, col4 = st.columns(2)
         with col3:
             selected_items = st.multiselect("Filter by Items", unique_item_names, default=[])
         with col4:
-            selected_overview_dept = st.multiselect("Filter by Departments", unique_departments[1:], default=[])
+            selected_overview_dept = st.multiselect("Filter by Departments", unique_departments, default=[])
     
     filtered_data = data.copy()
     if date_range:
@@ -339,6 +340,15 @@ elif selected_tab == "Data Overview":
     
     st.markdown("#### Filtered Data Preview")
     st.dataframe(filtered_data.head(100), use_container_width=True)
+    
+    # Download CSV for filtered data
+    csv = filtered_data.to_csv(index=False)
+    st.download_button(
+        label="Download Filtered Data as CSV",
+        data=csv,
+        file_name="filtered_data.csv",
+        mime="text/csv",
+    )
     
     st.markdown("#### Usage Statistics")
     total_usage = filtered_data["QUANTITY"].sum()
@@ -372,13 +382,35 @@ elif selected_tab == "Historical Usage":
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("### Historical Usage Trends")
     
-    selected_item = st.selectbox("Select Item", unique_item_names)
-    chart = generate_historical_usage_chart(data, selected_item)
+    # Overall statistics
+    st.markdown("#### Overall Statistics")
+    total_usage = data["QUANTITY"].sum()
+    most_used_item = data.groupby("ITEM NAME")["QUANTITY"].sum().idxmax()
+    most_used_department = data.groupby("DEPARTMENT")["QUANTITY"].sum().idxmax()
     
-    if chart:
-        st.plotly_chart(chart, use_container_width=True)
-    else:
-        st.warning(f"No historical usage data found for {selected_item}.")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Quantity Used", f"{total_usage:,.2f}")
+    with col2:
+        st.metric("Most Used Item", most_used_item)
+    with col3:
+        st.metric("Most Used Department", most_used_department)
+    
+    # Monthly usage per department
+    st.markdown("#### Monthly Usage per Department")
+    monthly_usage = data.groupby([pd.Grouper(key="DATE", freq="M"), "DEPARTMENT"])["QUANTITY"].sum().reset_index()
+    
+    fig = px.line(
+        monthly_usage,
+        x="DATE",
+        y="QUANTITY",
+        color="DEPARTMENT",
+        title="Monthly Usage by Department",
+        labels={"DATE": "Date", "QUANTITY": "Quantity"},
+        markers=True
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    
     st.markdown("</div>", unsafe_allow_html=True)
 
 # Ingredient Issuance
@@ -404,12 +436,12 @@ elif selected_tab == "Ingredient Issuance":
         
         # Suggestions for other fields
         item_data = data[data["ITEM NAME"] == selected_item].iloc[0]
-        department = st.text_input("Department", value=item_data["DEPARTMENT"])
+        department = st.selectbox("Department", unique_departments, index=unique_departments.index(item_data["DEPARTMENT"]))
         issued_to = st.text_input("Issued To", value=item_data["ISSUED_TO"])
         unit_of_measure = st.text_input("Unit of Measure", value=item_data["UNIT_OF_MEASURE"])
-        item_category = st.text_input("Item Category", value=item_data["ITEM_CATEGORY"])
+        item_category = st.selectbox("Item Category", unique_item_categories, index=unique_item_categories.index(item_data["ITEM_CATEGORY"]))
         reference = st.text_input("Reference", value=item_data["REFERENCE"])
-        department_cat = st.text_input("Department Category", value=item_data["DEPARTMENT_CAT"])
+        department_cat = st.selectbox("Department Category", unique_department_cats, index=unique_department_cats.index(item_data["DEPARTMENT_CAT"]))
         batch_no = st.text_input("Batch No.", value=item_data["BATCH NO."])
         store = st.text_input("Store", value=item_data["STORE"])
         received_by = st.text_input("Received By", value=item_data["RECEIVED BY"])

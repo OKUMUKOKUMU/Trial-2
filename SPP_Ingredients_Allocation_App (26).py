@@ -38,7 +38,7 @@ def connect_to_gsheet(spreadsheet_name, sheet_name):
         spreadsheet = client.open(spreadsheet_name)  
         return spreadsheet.worksheet(sheet_name)  # Access specific sheet by name
     except Exception as e:
-        st.error(f"Failed to connect to Google Sheets: {e}")
+        st.error(f"Failed to connect to Google Sheets: {e}. Please check your credentials or connection.")
         return None
 
 def load_data_from_google_sheet():
@@ -80,7 +80,7 @@ def load_data_from_google_sheet():
 
             return df
         except Exception as e:
-            st.error(f"Error loading data: {e}")
+            st.error(f"Error loading data: {e}. Please check the Google Sheet structure or data format.")
             return None
 
 @st.cache_data(ttl=3600)  # Cache data for 1 hour
@@ -143,7 +143,7 @@ def calculate_proportion(df, identifier, department=None, min_proportion=1.0):
         
         return significant_depts
     except Exception as e:
-        st.error(f"Error calculating proportions: {e}")
+        st.error(f"Error calculating proportions: {e}. Please check the input data.")
         return None
 
 def allocate_quantity(df, identifier, available_quantity, department=None):
@@ -172,27 +172,42 @@ def allocate_quantity(df, identifier, available_quantity, department=None):
     
     return proportions
 
-def generate_allocation_chart(result_df, item_name):
+def generate_allocation_chart(result_df, item_name, chart_type="Bar Chart"):
     """
-    Generate a bar chart for allocation results.
+    Generate a chart for allocation results based on the selected chart type.
     """
-    # Create a summarized version for charting (by DEPARTMENT only)
     chart_df = result_df.copy()
     
-    # Create a bar chart
-    fig = px.bar(
-        chart_df, 
-        x="DEPARTMENT", 
-        y="ALLOCATED_QUANTITY",
-        text="ALLOCATED_QUANTITY",
-        title=f"Allocation for {item_name} by Department",
-        labels={
-            "DEPARTMENT": "Department",
-            "ALLOCATED_QUANTITY": "Allocated Quantity"
-        },
-        height=400,
-        color_discrete_sequence=px.colors.qualitative.Vivid
-    )
+    if chart_type == "Bar Chart":
+        fig = px.bar(
+            chart_df, 
+            x="DEPARTMENT", 
+            y="ALLOCATED_QUANTITY",
+            text="ALLOCATED_QUANTITY",
+            title=f"Allocation for {item_name} by Department",
+            labels={
+                "DEPARTMENT": "Department",
+                "ALLOCATED_QUANTITY": "Allocated Quantity"
+            },
+            height=400,
+            color_discrete_sequence=px.colors.qualitative.Vivid
+        )
+    elif chart_type == "Pie Chart":
+        fig = px.pie(
+            chart_df,
+            values="ALLOCATED_QUANTITY",
+            names="DEPARTMENT",
+            title=f"Allocation for {item_name} by Department",
+            hole=0.4
+        )
+    elif chart_type == "Line Chart":
+        fig = px.line(
+            chart_df,
+            x="DEPARTMENT",
+            y="ALLOCATED_QUANTITY",
+            title=f"Allocation for {item_name} by Department",
+            markers=True
+        )
     
     # Customize the layout
     fig.update_layout(
@@ -262,6 +277,31 @@ st.markdown("""
     .stSelectbox, .stNumberInput, .stMultiselect {
         margin-bottom: 15px;
     }
+    .tooltip {
+        position: relative;
+        display: inline-block;
+        border-bottom: 1px dotted black;
+    }
+    .tooltip .tooltiptext {
+        visibility: hidden;
+        width: 120px;
+        background-color: black;
+        color: #fff;
+        text-align: center;
+        border-radius: 5px;
+        padding: 5px;
+        position: absolute;
+        z-index: 1;
+        bottom: 125%;
+        left: 50%;
+        margin-left: -60px;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    .tooltip:hover .tooltiptext {
+        visibility: visible;
+        opacity: 1;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -301,6 +341,11 @@ with st.sidebar:
     if st.button("Refresh Data"):
         st.session_state.data = load_data_from_google_sheet()
         st.success("Data refreshed successfully!")
+    
+    # Clear cache button
+    if st.button("Clear Cache"):
+        st.cache_data.clear()
+        st.success("Cache cleared successfully!")
     
     st.markdown("---")
     st.markdown("### View Options")
@@ -379,8 +424,9 @@ if view_mode == "Allocation Calculator":
                         mime="text/csv",
                     )
                     
-                    # Show visualization
-                    chart = generate_allocation_chart(result, identifier)
+                    # Dynamic visualization options
+                    chart_type = st.selectbox("Select Chart Type", ["Bar Chart", "Pie Chart", "Line Chart"], key=f"chart_{i}")
+                    chart = generate_allocation_chart(result, identifier, chart_type)
                     st.plotly_chart(chart, use_container_width=True)
                     
                     st.markdown("</div>", unsafe_allow_html=True)
@@ -429,7 +475,6 @@ elif view_mode == "Data Overview":
     st.dataframe(filtered_data[display_columns].head(100), use_container_width=True)
     st.markdown("</div>", unsafe_allow_html=True)
     
-    # Simple statistics
     # Simple statistics
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("#### Usage Statistics")

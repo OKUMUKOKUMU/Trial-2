@@ -159,7 +159,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
+# Custom CSS for modern appearance
 st.markdown("""
     <style>
     .title {
@@ -188,6 +188,7 @@ st.markdown("""
         font-weight: bold;
         border-radius: 5px;
         padding: 10px 20px;
+        transition: background-color 0.3s ease;
     }
     .stButton button:hover {
         background-color: #1C6EA4;
@@ -198,12 +199,30 @@ st.markdown("""
         padding: 20px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         margin-bottom: 20px;
+        border: 1px solid #e0e0e0;
     }
     .stDataFrame {
-        background-color: #f0f0f0;
+        background-color: #f9f9f9;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
     .stDataFrame:active {
-        background-color: #2E86C1;
+        background-color: #e0f7fa;
+    }
+    .stSelectbox, .stNumberInput, .stMultiselect {
+        margin-bottom: 15px;
+    }
+    .stExpander {
+        background-color: #f9f9f9;
+        border-radius: 10px;
+        padding: 10px;
+        margin-bottom: 20px;
+    }
+    .stMetric {
+        background-color: #f0f4f8;
+        border-radius: 10px;
+        padding: 15px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
     </style>
 """, unsafe_allow_html=True)
@@ -228,12 +247,12 @@ with st.sidebar:
     st.markdown("<h2 class='title'>Quick Actions & Stats</h2>", unsafe_allow_html=True)
     
     # Refresh data button
-    if st.button("Refresh Data"):
+    if st.button("🔄 Refresh Data"):
         st.session_state.data = load_data_from_google_sheet()
         st.success("Data refreshed successfully!")
     
     # Clear cache button
-    if st.button("Clear Cache"):
+    if st.button("🧹 Clear Cache"):
         st.cache_data.clear()
         st.success("Cache cleared successfully!")
     
@@ -267,16 +286,16 @@ unique_stores = sorted(data["STORE"].unique().tolist())
 # Buttons for main page
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    if st.button("Allocate Ingredients"):
+    if st.button("📊 Allocate Ingredients"):
         st.session_state.selected_tab = "Allocation Calculator"
 with col2:
-    if st.button("View Data Overview"):
+    if st.button("📈 View Data Overview"):
         st.session_state.selected_tab = "Data Overview"
 with col3:
-    if st.button("Analyze Historical Usage"):
+    if st.button("📅 Analyze Historical Usage"):
         st.session_state.selected_tab = "Historical Usage"
 with col4:
-    if st.button("Issue Ingredients"):
+    if st.button("📝 Issue Ingredients"):
         st.session_state.selected_tab = "Ingredient Issuance"
 
 # Default to Allocation Calculator if no tab is selected

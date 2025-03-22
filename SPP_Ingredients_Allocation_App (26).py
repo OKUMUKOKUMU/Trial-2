@@ -227,20 +227,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Main title and subtitle
+# Main title
 st.markdown("<h1 class='title'>SPP Ingredients Management App</h1>", unsafe_allow_html=True)
-st.markdown("""
-    <p class='subtitle'>
-        Efficiently allocate ingredients based on historical usage. 
-        Use the buttons below to:
-        <ul>
-            <li><strong>Allocate Ingredients</strong>: Calculate allocations for specific items.</li>
-            <li><strong>View Data Overview</strong>: Explore filtered data and usage statistics.</li>
-            <li><strong>Analyze Historical Usage</strong>: Visualize trends and identify most used items.</li>
-            <li><strong>Issue Ingredients</strong>: Record new ingredient issuances with suggestions from historical data.</li>
-        </ul>
-    </p>
-""", unsafe_allow_html=True)
 
 # Sidebar
 with st.sidebar:
@@ -479,6 +467,24 @@ elif st.session_state.selected_tab == "Historical Usage":
         markers=True
     )
     st.plotly_chart(fig, use_container_width=True)
+    
+    # Top 10 most used items by department
+    st.markdown("#### Top 10 Most Used Items by Department")
+    selected_department = st.selectbox("Select Department", unique_departments)
+    
+    if selected_department:
+        top_items = data[data["DEPARTMENT"] == selected_department].groupby("ITEM NAME")["QUANTITY"].sum().nlargest(10).reset_index()
+        
+        fig = px.bar(
+            top_items,
+            x="ITEM NAME",
+            y="QUANTITY",
+            title=f"Top 10 Most Used Items in {selected_department}",
+            labels={"ITEM NAME": "Item", "QUANTITY": "Quantity"},
+            color="QUANTITY",
+            color_continuous_scale=px.colors.sequential.Blues
+        )
+        st.plotly_chart(fig, use_container_width=True)
     
     st.markdown("</div>", unsafe_allow_html=True)
 
